@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>예담이의 시간표</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #c9eeff 0%, #e8f8e8 50%, #fff5e0 100%);
+    font-family: 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', sans-serif;
+    color: #2d2d2d;
+    padding: 0 0 60px;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header { text-align: center; padding: 2rem 1rem 0.8rem; }
+  .school-tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px; padding: 0.3rem 1.1rem;
+    font-size: 0.8rem; color: #4a7aaa; font-weight: 700;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .header-emoji { font-size: 2.8rem; display: block; margin-bottom: 0.2rem; }
+  .header h1 { font-size: 1.6rem; font-weight: 800; color: #2d6a9f; }
+  .header h1 .name { color: #e05a8a; }
+  .day-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: white; border-radius: 50px;
+    padding: 0.4rem 1.2rem; margin-top: 0.6rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    font-size: 0.95rem; color: #555; font-weight: 700;
+  }
+  .day-name { font-size: 1.1rem; font-weight: 800; }
+
+  /* Day tabs */
+  .day-tabs {
+    display: flex; justify-content: center; gap: 0.35rem;
+    padding: 0.8rem 1rem; flex-wrap: wrap;
+  }
+  .day-tab {
+    background: white; border: 2px solid transparent;
+    border-radius: 50px; padding: 0.3rem 0.85rem;
+    font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; color: #777;
+    box-shadow: 0 2px 7px rgba(0,0,0,0.08);
+  }
+  .day-tab:hover { transform: translateY(-2px); }
+  .day-tab.active { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+  .day-tab[data-day="1"].active { background: #4D96FF; }
+  .day-tab[data-day="2"].active { background: #FF6B6B; }
+  .day-tab[data-day="3"].active { background: #6BCB77; }
+  .day-tab[data-day="4"].active { background: #FFB347; }
+  .day-tab[data-day="5"].active { background: #C77DFF; }
+  .day-tab[data-day="6"].active, .day-tab[data-day="0"].active { background: #aaa; }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    padding: 0 1rem 0.8rem; max-width: 480px;
+    margin: 0 auto; justify-content: center;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 0.3rem;
+    background: white; border-radius: 20px;
+    padding: 0.22rem 0.65rem; font-size: 0.72rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07); color: #555;
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Content */
+  .content { max-width: 480px; margin: 0 auto; padding: 0 1rem; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 16px; padding-top: 0.5rem; }
+  .timeline::before {
+    content: ''; position: absolute; left: 26px; top: 20px; bottom: 20px;
+    width: 3px; background: linear-gradient(180deg, #6BCB77, #4D96FF, #FFD93D, #FF6B6B, #C77DFF, #FF9F1C);
+    border-radius: 3px; opacity: 0.25;
+  }
+
+  .item {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    margin-bottom: 0.7rem;
+    animation: slideIn 0.35s ease both;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .item-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 1rem;
+    border: 3px solid white; box-shadow: 0 2px 7px rgba(0,0,0,0.15);
+    position: relative; z-index: 1;
+  }
+  .item-card {
+    flex: 1; background: #fffef9; border-radius: 14px;
+    padding: 0.78rem 1rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+    border-left: 5px solid #ddd;
+    transition: transform 0.2s;
+  }
+  .item-card:hover { transform: translateX(4px); }
+  .item-time { font-size: 0.7rem; color: #999; font-weight: 700; margin-bottom: 0.2rem; }
+  .item-name { font-size: 1rem; font-weight: 800; line-height: 1.3; }
+  .item-place { font-size: 0.72rem; color: #bbb; margin-top: 0.18rem; }
+
+  /* Category colors */
+  .cat-care      .item-dot { background: #6BCB77; }
+  .cat-care      .item-card { border-color: #6BCB77; }
+  .cat-care      .item-name { color: #2e7d3a; }
+
+  .cat-school    .item-dot { background: #4D96FF; }
+  .cat-school    .item-card { border-color: #4D96FF; }
+  .cat-school    .item-name { color: #1a5fa8; }
+
+  .cat-lunch     .item-dot { background: #FFD93D; }
+  .cat-lunch     .item-card { border-color: #FFD93D; background: linear-gradient(135deg, #fffdf0, #fff9cc); }
+  .cat-lunch     .item-name { color: #a07800; }
+
+  .cat-special   .item-dot { background: #FFB347; }
+  .cat-special   .item-card { border-color: #FFB347; }
+  .cat-special   .item-name { color: #a06020; }
+
+  .cat-taekwondo .item-dot { background: #FF6B6B; }
+  .cat-taekwondo .item-card { border-color: #FF6B6B; }
+  .cat-taekwondo .item-name { color: #b53030; }
+
+  .cat-piano     .item-dot { background: #C77DFF; }
+  .cat-piano     .item-card { border-color: #C77DFF; }
+  .cat-piano     .item-name { color: #7b3fb5; }
+
+  .cat-art       .item-dot { background: #FF9F1C; }
+  .cat-art       .item-card { border-color: #FF9F1C; }
+  .cat-art       .item-name { color: #a05800; }
+
+  /* Weekend */
+  .weekend-msg { text-align: center; padding: 3rem 1rem; }
+  .weekend-msg .big-emoji { font-size: 5rem; display: block; margin-bottom: 1rem; }
+  .weekend-msg h2 { font-size: 1.6rem; font-weight: 800; color: #666; margin-bottom: 0.5rem; }
+  .weekend-msg p { color: #aaa; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="school-tag">🏫 등현초등학교 사슴반</div>
+  <span class="header-emoji" id="header-emoji">📅</span>
+  <h1>✨ <span class="name">예담</span>이의 시간표</h1>
+  <div class="day-badge">
+    <span id="date-str"></span>
+    <span class="day-name" id="day-str"></span>
+  </div>
+</header>
+
+<div class="day-tabs">
+  <button class="day-tab" data-day="1">월</button>
+  <button class="day-tab" data-day="2">화</button>
+  <button class="day-tab" data-day="3">수</button>
+  <button class="day-tab" data-day="4">목</button>
+  <button class="day-tab" data-day="5">금</button>
+  <button class="day-tab" data-day="6">토</button>
+  <button class="day-tab" data-day="0">일</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#6BCB77"></div>돌봄</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4D96FF"></div>학교수업</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FFD93D"></div>점심</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FFB347"></div>방과후</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF6B6B"></div>태권도</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C77DFF"></div>피아노</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF9F1C"></div>미술</div>
+</div>
+
+<main class="content" id="content"></main>
+
+<script>
+var scheduleData = {
+  1: [
+    {time:'08:30 ~ 09:00', name:'아침돌봄',     place:'',           cat:'cat-care'},
+    {time:'09:00 ~ 11:40', name:'학교 수업',    place:'교실',        cat:'cat-school'},
+    {time:'11:40 ~ 12:40', name:'🍱 점심시간',  place:'',           cat:'cat-lunch'},
+    {time:'12:40 ~ 13:30', name:'학교 수업',    place:'교실',        cat:'cat-school'},
+    {time:'16:00 ~ 17:00', name:'태권도',       place:'📍 5층',     cat:'cat-taekwondo'},
+    {time:'17:00 ~ 18:00', name:'피아노',       place:'📍 4층',     cat:'cat-piano'}
+  ],
+  2: [
+    {time:'08:30 ~ 09:00', name:'아침돌봄',     place:'',           cat:'cat-care'},
+    {time:'09:00 ~ 11:40', name:'학교 수업',    place:'교실',        cat:'cat-school'},
+    {time:'11:40 ~ 12:40', name:'🍱 점심시간',  place:'',           cat:'cat-lunch'},
+    {time:'12:40 ~ 13:30', name:'학교 수업',    place:'교실',        cat:'cat-school'},
+    {time:'13:30 ~ 14:20', name:'방송댄스 💃',  place:'',           cat:'cat-special'},
+    {time:'16:00 ~ 17:00', name:'태권도',       place:'📍 5층',     cat:'cat-taekwondo'},
+    {time:'17:00 ~ 18:30', name:'미술학원',     place:'📍 2층',     cat:'cat-art'}
+  ],
+  3: [
+    {time:'08:30 ~ 09:00', name:'아침돌봄',      place:'',           cat:'cat-care'},
+    {time:'09:00 ~ 11:40', name:'학교 수업',     place:'교실',        cat:'cat-school'},
+    {time:'11:40 ~ 12:40', name:'🍱 점심시간',   place:'',           cat:'cat-lunch'},
+    {time:'12:40 ~ 13:30', name:'꾸러기컴박사',  place:'💻 컴퓨터실', cat:'cat-special'},
+    {time:'16:00 ~ 17:00', name:'태권도',        place:'📍 5층',     cat:'cat-taekwondo'},
+    {time:'17:00 ~ 18:00', name:'피아노',        place:'📍 4층',     cat:'cat-piano'}
+  ],
+  4: [
+    {time:'08:30 ~ 09:00', name:'아침돌봄',      place:'',           cat:'cat-care'},
+    {time:'09:00 ~ 11:40', name:'학교 수업',     place:'교실',        cat:'cat-school'},
+    {time:'11:40 ~ 12:40', name:'🍱 점심시간',   place:'',           cat:'cat-lunch'},
+    {time:'12:40 ~ 13:30', name:'학교 수업',     place:'교실',        cat:'cat-school'},
+    {time:'13:30 ~ 14:20', name:'웹툰만들기 ✏️', place:'',           cat:'cat-special'},
+    {time:'16:00 ~ 17:00', name:'태권도',        place:'📍 5층',     cat:'cat-taekwondo'},
+    {time:'17:00 ~ 18:30', name:'미술학원',      place:'📍 2층',     cat:'cat-art'}
+  ],
+  5: [
+    {time:'08:30 ~ 09:00', name:'아침돌봄',      place:'',           cat:'cat-care'},
+    {time:'09:00 ~ 11:40', name:'학교 수업',     place:'교실',        cat:'cat-school'},
+    {time:'11:40 ~ 12:40', name:'🍱 점심시간',   place:'',           cat:'cat-lunch'},
+    {time:'12:40 ~ 13:30', name:'꾸러기컴박사',  place:'💻 컴퓨터실', cat:'cat-special'},
+    {time:'16:00 ~ 17:00', name:'태권도',        place:'📍 5층',     cat:'cat-taekwondo'},
+    {time:'17:00 ~ 18:00', name:'피아노',        place:'📍 4층',     cat:'cat-piano'}
+  ]
+};
+
+var DAY_NAMES  = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+var DAY_EMOJIS = ['😴','📚','💃','💻','✏️','🎹','🎉'];
+var DAY_COLORS = ['#aaa','#4D96FF','#FF6B6B','#6BCB77','#FFB347','#C77DFF','#aaa'];
+
+function setHeader(d) {
+  document.getElementById('day-str').textContent = DAY_NAMES[d];
+  document.getElementById('day-str').style.color = DAY_COLORS[d];
+  document.getElementById('header-emoji').textContent = DAY_EMOJIS[d];
+}
+
+function renderSchedule(day) {
+  var content = document.getElementById('content');
+  if (day === 0 || day === 6) {
+    content.innerHTML = '<div class="weekend-msg"><span class="big-emoji">' + (day===0?'😴':'🎉') + '</span><h2>' + (day===0?'일요일이에요!':'토요일이에요!') + '</h2><p>오늘은 푹 쉬는 날이에요 ✨</p></div>';
+    return;
+  }
+  var items = scheduleData[day] || [];
+  var html = '<div class="timeline">';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    html += '<div class="item ' + item.cat + '" style="animation-delay:' + (i*0.07) + 's">';
+    html += '<div class="item-dot"></div>';
+    html += '<div class="item-card">';
+    html += '<div class="item-time">🕐 ' + item.time + '</div>';
+    html += '<div class="item-name">' + item.name + '</div>';
+    if (item.place) html += '<div class="item-place">' + item.place + '</div>';
+    html += '</div></div>';
+  }
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+function init() {
+  var now = new Date();
+  var today = now.getDay();
+  var mm = String(now.getMonth()+1).padStart(2,'0');
+  var dd = String(now.getDate()).padStart(2,'0');
+  document.getElementById('date-str').textContent = mm + '월 ' + dd + '일';
+  setHeader(today);
+
+  var tabs = document.querySelectorAll('.day-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    (function(btn) {
+      var d = parseInt(btn.getAttribute('data-day'));
+      if (d === today) btn.classList.add('active');
+      btn.addEventListener('click', function() {
+        for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+        btn.classList.add('active');
+        setHeader(d);
+        renderSchedule(d);
+      });
+    })(tabs[i]);
+  }
+  renderSchedule(today);
+}
+
+init();
+</script>
+</body>
+</html>
