@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>매출 비교 분석</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f6f3; --surface: #ffffff; --surface2: #f0efe9;
+  --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+  --text: #1a1a1a; --text2: #555; --text3: #999;
+  --red: #E24B4A; --red-bg: #FCEBEB; --red-text: #A32D2D;
+  --green: #639922; --green-bg: #EAF3DE; --green-text: #3B6D11;
+  --amber: #BA7517; --amber-bg: #FAEEDA; --amber-text: #854F0B;
+  --blue: #378ADD; --blue-bg: #E6F1FB; --blue-text: #185FA5;
+  --radius: 12px; --radius-sm: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141414; --surface: #1e1e1e; --surface2: #272727;
+    --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+    --text: #e8e8e8; --text2: #aaa; --text3: #666;
+    --red-bg: rgba(226,75,74,0.15); --red-text: #f09595;
+    --green-bg: rgba(99,153,34,0.15); --green-text: #97c459;
+    --amber-bg: rgba(186,117,23,0.15); --amber-text: #fac775;
+    --blue-bg: rgba(55,138,221,0.15); --blue-text: #85b7eb;
+  }
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
+  min-height: 100vh; padding: 2rem 1rem 4rem;
+}
+.wrap { max-width: 900px; margin: 0 auto; }
+
+/* Header */
+.header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 2rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 1.3rem; font-weight: 700; }
+.header h1 span { color: var(--blue); }
+.header p { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+.date-badge { font-size: 0.78rem; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.3rem 0.8rem; }
+
+/* API Key section */
+.api-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.5rem; }
+.api-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.api-label { font-size: 0.78rem; font-weight: 700; color: var(--text2); white-space: nowrap; }
+.api-input { flex: 1; min-width: 200px; padding: 0.5rem 0.8rem; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 0.82rem; font-family: monospace; outline: none; }
+.api-input:focus { border-color: var(--blue); }
+.api-save { padding: 0.5rem 1rem; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text2); font-size: 0.78rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.api-save:hover { border-color: var(--blue); color: var(--blue); }
+.api-status { font-size: 0.72rem; margin-top: 0.4rem; }
+.api-ok { color: var(--green); }
+.api-empty { color: var(--text3); }
+.api-hint { font-size: 0.7rem; color: var(--text3); margin-top: 0.3rem; }
+
+/* Upload */
+.upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+.upload-box { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); position: relative; min-height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.upload-box:hover { border-color: var(--blue); background: var(--blue-bg); }
+.upload-box.has-img { border-style: solid; border-color: var(--border); }
+.upload-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-tag-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); }
+.upload-title { font-size: 0.88rem; font-weight: 700; color: var(--text2); }
+.upload-sub { font-size: 0.72rem; color: var(--text3); }
+.upload-preview { width: 100%; max-height: 100px; object-fit: contain; border-radius: 6px; display: none; }
+.upload-preview.show { display: block; }
+.upload-done { font-size: 0.72rem; color: var(--green); display: none; }
+.upload-done.show { display: block; }
+
+.btn-analyze { width: 100%; padding: 0.85rem; font-size: 0.95rem; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; border: none; background: var(--blue); color: #fff; transition: all 0.2s; margin-bottom: 1.5rem; }
+.btn-analyze:hover { background: #2a7acc; }
+.btn-analyze:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; }
+
+/* Loading */
+.loading { display: none; text-align: center; padding: 2.5rem; }
+.loading.show { display: block; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Dashboard */
+.dashboard { display: none; }
+.dashboard.show { display: block; }
+
+.metric-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.2rem; }
+.metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1rem; }
+.metric-label { font-size: 0.68rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.metric-val { font-size: 1.4rem; font-weight: 700; }
+.metric-sub { font-size: 0.7rem; margin-top: 3px; color: var(--text3); }
+.up { color: var(--green); }
+.down { color: var(--red); }
+.neutral { color: var(--text); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.grid1 { margin-bottom: 12px; }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border); }
+.panel-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.panel-title { font-size: 0.85rem; font-weight: 700; flex: 1; }
+.panel-count { font-size: 0.72rem; color: var(--text3); }
+.panel-body { padding: 0.8rem 1.1rem; }
+
+.item { padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+.item:last-child { border-bottom: none; padding-bottom: 0; }
+.item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 4px; }
+.item-name { font-size: 0.88rem; font-weight: 700; }
+.pills { display: flex; gap: 4px; align-items: center; }
+.pill { font-size: 0.68rem; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
+.pill-red   { background: var(--red-bg);   color: var(--red-text); }
+.pill-green { background: var(--green-bg); color: var(--green-text); }
+.pill-amber { background: var(--amber-bg); color: var(--amber-text); }
+.pill-blue  { background: var(--blue-bg);  color: var(--blue-text); }
+.pill-gray  { background: var(--surface2); color: var(--text2); }
+.item-desc { font-size: 0.78rem; color: var(--text2); line-height: 1.6; }
+.arrow { font-size: 0.7rem; color: var(--text3); }
+.empty { font-size: 0.78rem; color: var(--text3); padding: 0.5rem 0; }
+
+.action-item { display: flex; align-items: flex-start; gap: 10px; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.action-item:last-child { border-bottom: none; }
+.action-num { width: 20px; height: 20px; border-radius: 50%; background: var(--blue-bg); color: var(--blue-text); font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.action-text { font-size: 0.82rem; color: var(--text); line-height: 1.6; }
+
+.insight-box { background: var(--surface2); border-radius: var(--radius-sm); padding: 1rem 1.1rem; font-size: 0.85rem; color: var(--text2); line-height: 1.9; white-space: pre-line; }
+.copy-btn { font-size: 0.7rem; padding: 3px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text3); cursor: pointer; transition: all 0.2s; }
+.copy-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.err { background: var(--red-bg); border: 1px solid rgba(226,75,74,0.3); border-radius: var(--radius-sm); padding: 0.8rem 1rem; font-size: 0.82rem; color: var(--red-text); margin-bottom: 1rem; display: none; }
+.err.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <h1>매출 <span>비교 분석</span></h1>
+      <p>이전 현황판과 최근 현황판의 갭을 AI가 분석합니다</p>
+    </div>
+    <div class="date-badge" id="today"></div>
+  </div>
+
+  <!-- API Key -->
+  <div class="api-section">
+    <div class="api-row">
+      <span class="api-label">🔑 API Key</span>
+      <input type="password" id="api-key" class="api-input" placeholder="sk-ant-api03-...">
+      <button class="api-save" onclick="saveKey()">저장</button>
+    </div>
+    <div class="api-status" id="api-status"></div>
+    <div class="api-hint">Anthropic Console(console.anthropic.com)에서 발급 · 브라우저에 저장되며 외부에 전송되지 않습니다</div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-row">
+    <div class="upload-box" id="box-before">
+      <input type="file" id="inp-before" accept="image/*" multiple>
+      <div class="upload-tag-label">이전 현황판</div>
+      <div class="upload-title" id="title-before">클릭 또는 드래그</div>
+      <div class="upload-sub">PNG, JPG · 여러 장 가능</div>
+      <img class="upload-preview" id="prev-before">
+      <div class="upload-done" id="done-before">✓ 업로드 완료</div>
+    </div>
+    <div class="upload-box" id="box-after">
+      <input type="file" id="inp-after" accept="image/*" multiple>
+      <div class="upload-tag-label">최근 현황판</div>
+      <div class="upload-title" id="title-after">클릭 또는 드래그</div>
+      <div class="upload-sub">PNG, JPG · 여러 장 가능</div>
+      <img class="upload-preview" id="prev-after">
+      <div class="upload-done" id="done-after">✓ 업로드 완료</div>
+    </div>
+  </div>
+
+  <div class="err" id="err"></div>
+  <button class="btn-analyze" id="btn" disabled>두 현황판을 모두 올려주세요</button>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p style="font-size:0.85rem;color:var(--text2)">두 현황판을 비교 분석 중...</p>
+  </div>
+
+  <div class="dashboard" id="dashboard">
+    <div class="metric-row" id="metrics"></div>
+    <div class="grid2" id="grid-top"></div>
+    <div class="grid2" id="grid-mid"></div>
+    <div class="grid1" id="grid-insight"></div>
+  </div>
+
+</div>
+<script>
+(function() {
+  var imgs = { before: [], after: [] };
+
+  // Date
+  var now = new Date();
+  document.getElementById('today').textContent =
+    now.getFullYear() + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + String(now.getDate()).padStart(2,'0');
+
+  // API Key
+  var savedKey = localStorage.getItem('anthropic_key') || '';
+  if (savedKey) {
+    document.getElementById('api-key').value = savedKey;
+    document.getElementById('api-status').className = 'api-status api-ok';
+    document.getElementById('api-status').textContent = '✓ 저장된 키가 있습니다';
+  } else {
+    document.getElementById('api-status').className = 'api-status api-empty';
+    document.getElementById('api-status').textContent = '키를 입력하고 저장하세요';
+  }
+
+  window.saveKey = function() {
+    var k = document.getElementById('api-key').value.trim();
+    if (!k) { alert('API 키를 입력해주세요.'); return; }
+    localStorage.setItem('anthropic_key', k);
+    document.getElementById('api-status').className = 'api-status api-ok';
+    document.getElementById('api-status').textContent = '✓ 저장됐어요';
+    checkReady();
+  };
+
+  // Upload setup
+  function setup(inpId, boxId, prevId, doneId, titleId, key) {
+    var inp  = document.getElementById(inpId);
+    var box  = document.getElementById(boxId);
+    var prev = document.getElementById(prevId);
+    var done = document.getElementById(doneId);
+    var title = document.getElementById(titleId);
+
+    function handle(files) {
+      imgs[key] = [];
+      var arr = Array.from(files).filter(function(f) { return f.type.startsWith('image/'); });
+      if (!arr.length) return;
+      arr.forEach(function(f, i) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          imgs[key].push({ base64: e.target.result.split(',')[1], type: f.type });
+          if (i === 0) { prev.src = e.target.result; prev.classList.add('show'); }
+          done.textContent = arr.length > 1 ? '✓ ' + arr.length + '장 완료' : '✓ 업로드 완료';
+          done.classList.add('show');
+          title.textContent = arr.length > 1 ? arr.length + '장 선택됨' : f.name.substring(0, 15);
+          box.classList.add('has-img');
+          checkReady();
+        };
+        reader.readAsDataURL(f);
+      });
+    }
+
+    inp.addEventListener('change', function() { if (inp.files.length) handle(inp.files); inp.value = ''; });
+    box.addEventListener('dragover', function(e) { e.preventDefault(); box.style.borderColor = 'var(--blue)'; });
+    box.addEventListener('dragleave', function() { box.style.borderColor = ''; });
+    box.addEventListener('drop', function(e) { e.preventDefault(); box.style.borderColor = ''; if (e.dataTransfer.files.length) handle(e.dataTransfer.files); });
+  }
+
+  setup('inp-before','box-before','prev-before','done-before','title-before','before');
+  setup('inp-after', 'box-after', 'prev-after', 'done-after', 'title-after', 'after');
+
+  function checkReady() {
+    var btn = document.getElementById('btn');
+    var key = localStorage.getItem('anthropic_key') || document.getElementById('api-key').value.trim();
+    if (imgs.before.length && imgs.after.length && key) {
+      btn.disabled = false;
+      btn.textContent = '⚡ 비교 분석 시작';
+    } else if (!key) {
+      btn.disabled = true;
+      btn.textContent = 'API 키를 먼저 저장해주세요';
+    } else {
+      btn.disabled = true;
+      btn.textContent = '두 현황판을 모두 올려주세요';
+    }
+  }
+
+  document.getElementById('btn').addEventListener('click', analyze);
+
+  function getPrompt() {
+    var m = now.getMonth() + 1, d = now.getDate();
+    var season = m===3&&d<=15 ? '신학기 준비 막바지. 봄신상/운동화 피크.'
+      : m===3&&d>=16 ? '입학식 완료. 봄신상/어린이날 얼리버드 전환.'
+      : m===4 ? '봄 본격화. 어린이날(5/5) 선물 준비 수요.'
+      : (m>=5&&m<=6) ? '어린이날/가정의달. 선물세트/완구/샌들 수요.'
+      : (m>=7&&m<=8) ? '여름방학. 수영복/샌들/여름캐주얼 피크.'
+      : (m>=9&&m<=10) ? '개학/추석. 가을신상/아우터 얼리버드.'
+      : '방한/겨울. 패딩/부츠/기모이너웨어.';
+
+    return [
+      '당신은 이랜드 플랫폼 매출 분석 전문가입니다.',
+      '[컨텍스트]',
+      '- 이랜드몰: 자사몰, 이랜드 브랜드 중심, 제도권/디자이너 개념 없음',
+      '- 키디키디: 키즈 전문, 외부 아동 브랜드 중심',
+      '- 제도권패션(키디키디): 백화점 기성 아동패션. 교복/체육복 판매 안함',
+      '- 디자이너(키디키디): SNS 기반 신진 아동브랜드',
+      '- 이랜드글로벌: 의류CU아동 + 성인PB 합산',
+      '- 팜앤푸드: 온라인마트, 식재료 위주',
+      '- MK_무누핀핀: 2월 재런칭 초기, 낮은 수치 정상',
+      '- 무형: 종료 카테고리, 분석 제외',
+      '- 여행: 최근 재개 초기, 낮은 수치 정상',
+      '- 시즌: ' + season,
+      '',
+      '첫 번째 이미지들 = [이전 현황판], 이후 이미지들 = [최근 현황판]',
+      '두 현황판의 갭을 분석해서 반드시 아래 JSON만 출력하세요. JSON 외 텍스트 없이.',
+      '',
+      '{"overall":{"before_ach":"이전달성율","after_ach":"최근달성율","before_gr":"이전성장율","after_gr":"최근성장율","one_line":"전체흐름한줄요약"},"turned_worse":[{"name":"카테고리","before":"이전","after":"최근","reason":"악화원인20자"}],"turned_better":[{"name":"카테고리","before":"이전","after":"최근","reason":"개선이유20자"}],"strong_trend":[{"name":"카테고리","trend":"추세20자","action":"드라이브액션25자"}],"actions":["집중액션1","집중액션2","집중액션3"],"insight":["요약줄1","요약줄2","요약줄3","요약줄4","요약줄5","요약줄6","요약줄7","요약줄8"]}'
+    ].join('\n');
+  }
+
+  async function analyze() {
+    var key = localStorage.getItem('anthropic_key') || document.getElementById('api-key').value.trim();
+    if (!key) { showErr('API 키를 입력하고 저장해주세요.'); return; }
+
+    document.getElementById('err').classList.remove('show');
+    document.getElementById('btn').disabled = true;
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('dashboard').classList.remove('show');
+
+    var content = [];
+    imgs.before.forEach(function(img, i) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: img.type, data: img.base64 } });
+      content.push({ type: 'text', text: '[이전 현황판 ' + (i+1) + ']' });
+    });
+    imgs.after.forEach(function(img, i) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: img.type, data: img.base64 } });
+      content.push({ type: 'text', text: '[최근 현황판 ' + (i+1) + ']' });
+    });
+    content.push({ type: 'text', text: getPrompt() });
+
+    try {
+      var res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-request-proxy': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: content }] })
+      });
+      var data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      var text = '';
+      for (var i = 0; i < data.content.length; i++) { if (data.content[i].text) text += data.content[i].text; }
+      var s = text.indexOf('{'), e = text.lastIndexOf('}');
+      var r = JSON.parse(text.substring(s, e + 1));
+      render(r);
+    } catch(err) {
+      showErr('분석 오류: ' + err.message);
+      document.getElementById('btn').disabled = false;
+    } finally {
+      document.getElementById('loading').classList.remove('show');
+    }
+  }
+
+  function render(r) {
+    var o = r.overall || {};
+
+    // Metrics
+    document.getElementById('metrics').innerHTML = [
+      mCard('이전 달성율', o.before_ach, '', ''),
+      mCard('최근 달성율', o.after_ach, '', deltaClass(o.before_ach, o.after_ach)),
+      mCard('이전 성장율', o.before_gr, '', ''),
+      mCard('최근 성장율', o.after_gr, o.one_line, deltaClass(o.before_gr, o.after_gr))
+    ].join('');
+
+    var worse  = r.turned_worse  || [];
+    var better = r.turned_better || [];
+    var strong = r.strong_trend  || [];
+    var actions = r.actions || [];
+
+    document.getElementById('grid-top').innerHTML =
+      panel('#E24B4A', '급격히 나빠진 카테고리', worse.length, renderWorse(worse)) +
+      panel('#639922', '성장 전환 카테고리', better.length, renderBetter(better));
+
+    document.getElementById('grid-mid').innerHTML =
+      panel('#BA7517', '추세 좋은 카테고리', strong.length, renderStrong(strong)) +
+      panel('#378ADD', '오늘 집중 액션', actions.length, renderActions(actions));
+
+    var insight = Array.isArray(r.insight) ? r.insight.filter(function(l){return l&&l.trim();}).join('\n') : (r.insight||'');
+    document.getElementById('grid-insight').innerHTML =
+      '<div class="panel"><div class="panel-head"><span class="panel-title">📋 핵심 요약</span><button class="copy-btn" onclick="doCopy()">복사</button></div><div class="panel-body"><div class="insight-box" id="insight-txt">' + esc(insight) + '</div></div></div>';
+
+    document.getElementById('dashboard').classList.add('show');
+    document.getElementById('btn').disabled = false;
+  }
+
+  window.doCopy = function() {
+    var el = document.getElementById('insight-txt');
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(function() {
+      var btn = document.querySelector('.copy-btn');
+      if (btn) { btn.textContent = '✓ 완료'; setTimeout(function(){ btn.textContent = '복사'; }, 2000); }
+    });
+  };
+
+  function deltaClass(a, b) {
+    var av = parseFloat((a||'').replace('%','')), bv = parseFloat((b||'').replace('%',''));
+    if (isNaN(av)||isNaN(bv)) return '';
+    return bv > av ? 'up' : bv < av ? 'down' : '';
+  }
+
+  function mCard(label, val, sub, cls) {
+    return '<div class="metric-card"><div class="metric-label">' + label + '</div><div class="metric-val ' + cls + '">' + esc(val||'-') + '</div>' + (sub ? '<div class="metric-sub">' + esc(sub) + '</div>' : '') + '</div>';
+  }
+
+  function panel(color, title, count, body) {
+    return '<div class="panel"><div class="panel-head"><div class="panel-dot" style="background:' + color + '"></div><span class="panel-title">' + title + '</span><span class="panel-count">' + count + '개</span></div><div class="panel-body">' + body + '</div></div>';
+  }
+
+  function renderWorse(arr) {
+    if (!arr.length) return '<div class="empty">해당 없음</div>';
+    return arr.map(function(it) {
+      return '<div class="item"><div class="item-top"><span class="item-name">' + esc(it.name) + '</span><div class="pills"><span class="pill pill-gray">' + esc(it.before) + '</span><span class="arrow">→</span><span class="pill pill-red">' + esc(it.after) + '</span></div></div><div class="item-desc">' + esc(it.reason) + '</div></div>';
+    }).join('');
+  }
+
+  function renderBetter(arr) {
+    if (!arr.length) return '<div class="empty">해당 없음</div>';
+    return arr.map(function(it) {
+      return '<div class="item"><div class="item-top"><span class="item-name">' + esc(it.name) + '</span><div class="pills"><span class="pill pill-gray">' + esc(it.before) + '</span><span class="arrow">→</span><span class="pill pill-green">' + esc(it.after) + '</span></div></div><div class="item-desc">' + esc(it.reason) + '</div></div>';
+    }).join('');
+  }
+
+  function renderStrong(arr) {
+    if (!arr.length) return '<div class="empty">해당 없음</div>';
+    return arr.map(function(it) {
+      return '<div class="item"><div class="item-top"><span class="item-name">' + esc(it.name) + '</span><span class="pill pill-amber">추세 좋음</span></div><div class="item-desc">' + esc(it.trend) + ' → ' + esc(it.action) + '</div></div>';
+    }).join('');
+  }
+
+  function renderActions(arr) {
+    if (!arr.length) return '<div class="empty">해당 없음</div>';
+    return arr.map(function(it, i) {
+      return '<div class="action-item"><div class="action-num">' + (i+1) + '</div><div class="action-text">' + esc(it) + '</div></div>';
+    }).join('');
+  }
+
+  function showErr(msg) {
+    var el = document.getElementById('err');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  checkReady();
+})();
+</script>
+</body>
+</html>
